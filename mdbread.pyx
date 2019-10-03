@@ -83,8 +83,7 @@ cdef class MDB(object):
 
         tables = []
         for i in range(self._handle.num_catalog):
-            entry = <MdbCatalogEntry*> \
-                    g_ptr_array_index(self._handle.catalog, i)
+            entry = <MdbCatalogEntry*> g_ptr_array_index(self._handle.catalog, i)
             name = entry.object_name
             if entry.object_type == MDB_TABLE:
                 if not b"MSys" in name:
@@ -114,10 +113,8 @@ cdef class Table(object):
         self.tbl = mdb_read_table_by_name(mdb._handle,
                                           self.name,MDB_TABLE)
         self.ncol = self.tbl.num_cols
-        self.bound_values = \
-            <char**> g_malloc(<int>(self.ncol * sizeof(char*)))
-        self.bound_lens = \
-            <int*> g_malloc(<int> (self.ncol * sizeof(int)))
+        self.bound_values = <char**> g_malloc(<int>(self.ncol * sizeof(char*)))
+        self.bound_lens = <int*> g_malloc(<int> (self.ncol * sizeof(int)))
 
         for j in range(self.ncol):
             self.bound_values[j] = <char*> g_malloc0(MDB_BIND_SIZE)
@@ -160,8 +157,7 @@ cdef class Table(object):
 
         _transformers = [transformers[t] for t in col_types]
         while mdb_fetch_row(self.tbl):
-            row = [_transformers[j](self.bound_values[j]) 
-                   for j in range(self.ncol)]
+            row = [_transformers[j](self.bound_values[j]) for j in range(self.ncol)]
             yield row
 
     def __del__(self):
@@ -177,4 +173,3 @@ cdef class Table(object):
             rows.append(row)
         names = self._column_names()
         return pandas.DataFrame(rows, columns=names)
-
