@@ -63,7 +63,8 @@ transformers = {
     "Boolean": lambda x: bool(int(x)),
     "Text": lambda x: x.decode(ENCODING),
     "DateTime": lambda dt: time.strptime(dt, "%m/%d/%y %H:%M:%S"),
-    "Memo/Hyperlink": str
+    "Memo/Hyperlink": str,
+    "Currency": as_double
 }
 
 cdef class MDB(object):
