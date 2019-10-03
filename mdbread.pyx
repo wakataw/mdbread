@@ -1,6 +1,7 @@
 import pandas
 import numpy
-import time
+
+from datetime import datetime
 from collections import namedtuple
 
 ENCODING = "iso-8859-1"
@@ -55,6 +56,11 @@ def as_double(x):
     except:
         return numpy.nan
 
+def as_date(date):
+    date_string = date.decode(ENCODING) if type(date) == bytes else date
+
+    return datetime.strptime(date_string, "%m/%d/%y %H:%M:%S")
+
 transformers = {
     "Integer": lambda x: int(x) if x != "" else "",
     "Long Integer": int,
@@ -62,8 +68,9 @@ transformers = {
     "Double": as_double,
     "Boolean": lambda x: bool(int(x)),
     "Text": lambda x: x.decode(ENCODING),
-    "DateTime": lambda dt: time.strptime(dt, "%m/%d/%y %H:%M:%S"),
-    "Memo/Hyperlink": str
+    "DateTime": as_date,
+    "Memo/Hyperlink": str,
+    "Currency": as_double
 }
 
 cdef class MDB(object):
@@ -81,9 +88,8 @@ cdef class MDB(object):
         cdef MdbCatalogEntry* entry
 
         tables = []
-        for i in xrange(self._handle.num_catalog):
-            entry = <MdbCatalogEntry*> \
-                    g_ptr_array_index(self._handle.catalog, i)
+        for i in range(self._handle.num_catalog):
+            entry = <MdbCatalogEntry*> g_ptr_array_index(self._handle.catalog, i)
             name = entry.object_name
             if entry.object_type == MDB_TABLE:
                 if not b"MSys" in name:
@@ -113,12 +119,10 @@ cdef class Table(object):
         self.tbl = mdb_read_table_by_name(mdb._handle,
                                           self.name,MDB_TABLE)
         self.ncol = self.tbl.num_cols
-        self.bound_values = \
-            <char**> g_malloc(<int>(self.ncol * sizeof(char*)))
-        self.bound_lens = \
-            <int*> g_malloc(<int> (self.ncol * sizeof(int)))
+        self.bound_values = <char**> g_malloc(<int>(self.ncol * sizeof(char*)))
+        self.bound_lens = <int*> g_malloc(<int> (self.ncol * sizeof(int)))
 
-        for j in xrange(self.ncol):
+        for j in range(self.ncol):
             self.bound_values[j] = <char*> g_malloc0(MDB_BIND_SIZE)
 
         mdb_read_columns(self.tbl)
@@ -126,7 +130,7 @@ cdef class Table(object):
     def _column_names(self):
         names = []
         cdef MdbColumn* col
-        for j in xrange(self.ncol):
+        for j in range(self.ncol):
             col = <MdbColumn*> g_ptr_array_index(self.tbl.columns, j)
             names.append(col.name.decode(ENCODING))
         return names
@@ -148,7 +152,7 @@ cdef class Table(object):
         cdef char* col_type
         col_types = []
 
-        for j in xrange(self.ncol):
+        for j in range(self.ncol):
             col = <MdbColumn*> g_ptr_array_index(self.tbl.columns, j)
             col_type = mdb_get_colbacktype_string(col)
             col_types.append(col_type.decode(ENCODING))
@@ -159,21 +163,16 @@ cdef class Table(object):
 
         _transformers = [transformers[t] for t in col_types]
         while mdb_fetch_row(self.tbl):
-            row = [_transformers[j](self.bound_values[j]) 
-                   for j in xrange(self.ncol)]
+            row = [_transformers[j](self.bound_values[j]) for j in range(self.ncol)]
             yield row
 
     def __del__(self):
-        for i in xrange(self.ncol):
+        for i in range(self.ncol):
             g_free(self.bound_values[i])
 
         g_free(self.bound_values)
         g_free(self.bound_lens)
  
     def to_data_frame(self):
-        rows = []
-        for row in self:
-            rows.append(row)
         names = self._column_names()
-        return pandas.DataFrame(rows, columns=names)
-
+        return pandas.DataFrame([row for row in self], columns=names)
