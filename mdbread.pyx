@@ -1,6 +1,7 @@
 import pandas
 import numpy
-import time
+
+from datetime import datetime
 from collections import namedtuple
 
 ENCODING = "iso-8859-1"
@@ -55,6 +56,11 @@ def as_double(x):
     except:
         return numpy.nan
 
+def as_date(date):
+    date_string = date.decode(ENCODING) if type(date) == bytes else date
+
+    return datetime.strptime(date_string, "%m/%d/%y %H:%M:%S")
+
 transformers = {
     "Integer": lambda x: int(x) if x != "" else "",
     "Long Integer": int,
@@ -62,7 +68,7 @@ transformers = {
     "Double": as_double,
     "Boolean": lambda x: bool(int(x)),
     "Text": lambda x: x.decode(ENCODING),
-    "DateTime": lambda dt: time.strptime(dt, "%m/%d/%y %H:%M:%S"),
+    "DateTime": as_date,
     "Memo/Hyperlink": str,
     "Currency": as_double
 }
