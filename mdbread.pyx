@@ -168,8 +168,5 @@ cdef class Table(object):
         g_free(self.bound_lens)
  
     def to_data_frame(self):
-        rows = []
-        for row in self:
-            rows.append(row)
         names = self._column_names()
-        return pandas.DataFrame(rows, columns=names)
+        return pandas.DataFrame([row for row in self], columns=names)
